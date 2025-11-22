@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Button,
   PermissionsAndroid,
   Platform,
   Vibration,
-} from 'react-native';
-import { BleManager, type Device } from 'react-native-ble-plx';
-import { Buffer } from 'buffer';
-import { Audio } from 'expo-av';
-import { ThemedText } from './ThemedText';
+} from "react-native";
+import { BleManager, type Device } from "react-native-ble-plx";
+import { Buffer } from "buffer";
+import { Audio } from "expo-av";
+import { ThemedText } from "./ThemedText";
 
 const getDistancePattern = (dist: number) => {
   let pattern: number[] = [];
@@ -32,38 +32,91 @@ const BluetoothManager = () => {
   const [distance, setDistance] = useState(0);
   const [device, setDevice] = useState<Device>();
   const [connected, setConnected] = useState(false);
-  const [beep, setBeep] = useState();
+  const [beep, setBeep] = useState<Audio.Sound | undefined>();
+  const [bluetoothState, setBluetoothState] = useState<string>("Unknown");
 
-  const requestPermissions = async () => {
-    if (Platform.OS === 'android' && Platform.Version >= 23) {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('Bluetooth permission denied');
+  const requestPermissions = async (): Promise<boolean> => {
+    if (Platform.OS === "android") {
+      if (Platform.Version >= 31) {
+        // Android 12+ (API 31+) requiere permisos específicos
+        const granted = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        ]);
+
+        const allGranted =
+          granted["android.permission.BLUETOOTH_SCAN"] ===
+            PermissionsAndroid.RESULTS.GRANTED &&
+          granted["android.permission.BLUETOOTH_CONNECT"] ===
+            PermissionsAndroid.RESULTS.GRANTED &&
+          granted["android.permission.ACCESS_FINE_LOCATION"] ===
+            PermissionsAndroid.RESULTS.GRANTED;
+
+        if (!allGranted) {
+          console.log("Bluetooth permissions denied");
+          return false;
+        }
+      } else {
+        // Android 11 o menor
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          console.log("Location permission denied");
+          return false;
+        }
       }
     }
+
+    // En iOS, los permisos se solicitan automáticamente al usar BLE
+    return true;
   };
 
   useEffect(() => {
-    requestPermissions();
-    playBeep();
+    // Solicitar permisos al montar el componente
+    requestPermissions().catch(console.error);
+
+    // Monitorear el estado del Bluetooth
+    const subscription = manager.onStateChange((state) => {
+      setBluetoothState(state);
+      console.log("Estado de Bluetooth:", state);
+    }, true);
 
     return () => {
+      subscription.remove();
+      manager.stopDeviceScan();
       manager.destroy();
     };
   }, [manager]);
 
-  const scanForDevices = () => {
+  const scanForDevices = async () => {
+    // Verificar permisos antes de escanear
+    const hasPermissions = await requestPermissions();
+    if (!hasPermissions) {
+      console.log("No se otorgaron los permisos necesarios");
+      return;
+    }
+
+    // Verificar el estado del Bluetooth
+    const state = await manager.state();
+    if (state !== "PoweredOn") {
+      console.log("Bluetooth no está encendido. Estado:", state);
+      return;
+    }
+
+    console.log("Iniciando escaneo de dispositivos...");
+
     manager.startDeviceScan(null, null, (error, scannedDevice) => {
       if (error) {
-        console.error(error);
+        console.error("Error al escanear:", error);
         return;
       }
 
       // Filtrar por nombre o UUID de tu dispositivo ESP32
-
-      if (scannedDevice && scannedDevice?.localName === 'SmartCane') {
+      if (scannedDevice && scannedDevice?.localName === "SmartCane") {
+        console.log("Dispositivo SmartCane encontrado:", scannedDevice.id);
         setDevice(scannedDevice);
         manager.stopDeviceScan();
       }
@@ -71,16 +124,31 @@ const BluetoothManager = () => {
   };
 
   const connectToDevice = async () => {
-    if (device) {
-      try {
-        await device.connect();
-        setConnected(true);
-        readData();
-        console.log('Conectado a', device.name);
-      } catch (error) {
+    if (!device) {
+      console.log("No hay dispositivo seleccionado");
+      return;
+    }
+
+    try {
+      console.log("Conectando a", device.localName || device.id);
+
+      const connectedDevice = await device.connect();
+
+      setConnected(true);
+      console.log("Conectado exitosamente a", device.localName);
+
+      // Configurar desconexión automática
+      connectedDevice.onDisconnected((error, disconnectedDevice) => {
+        console.log("Dispositivo desconectado:", disconnectedDevice?.id);
         setConnected(false);
-        console.error('Error al conectar:', error);
-      }
+        setDistance(0);
+      });
+
+      // Iniciar lectura de datos
+      await readData();
+    } catch (error) {
+      setConnected(false);
+      console.error("Error al conectar:", error);
     }
   };
 
@@ -94,7 +162,7 @@ const BluetoothManager = () => {
     const beepDuration = pattern[1];
 
     const { sound } = await Audio.Sound.createAsync(
-      require('../assets/sounds/beep.mp3') // Asegúrate de tener un archivo beep.mp3 en la carpeta assets
+      require("../assets/sounds/beep.mp3") // Asegúrate de tener un archivo beep.mp3 en la carpeta assets
     );
     setBeep(sound);
 
@@ -112,62 +180,61 @@ const BluetoothManager = () => {
   }, [distance]);
 
   const readData = async () => {
-    //manager.stopDeviceScan();
+    if (!device) return;
 
-    setInterval(async () => {
-      try {
-        const isConnected = await device.isConnected();
+    try {
+      await device.discoverAllServicesAndCharacteristics();
 
-        if (!isConnected) {
-          await device.connect();
+      // Monitorear la característica en lugar de usar polling
+      device.monitorCharacteristicForService(
+        "180D", // UUID del servicio (Heart Rate Service)
+        "2A37", // UUID de la característica
+        (error, characteristic) => {
+          if (error) {
+            console.error("Error al leer característica:", error);
+            setConnected(false);
+            return;
+          }
+
+          if (characteristic?.value) {
+            const value = Buffer.from(
+              characteristic.value,
+              "base64"
+            ).toString();
+            const numValue = Number(value);
+
+            console.log("Distancia recibida:", numValue);
+            setDistance(numValue);
+
+            const pattern = getDistancePattern(numValue);
+
+            if (pattern.length) {
+              Vibration.vibrate(pattern);
+            }
+          }
         }
-
-        await device.discoverAllServicesAndCharacteristics();
-
-        const characteristic = await device.readCharacteristicForService(
-          '180D',
-          '2A37'
-        );
-
-        const value = Buffer.from(characteristic.value, 'base64').toString();
-        const numValue = Number(value);
-
-        console.log('Valor de la característica:', characteristic.value, value);
-
-        setDistance(numValue);
-
-        const pattern = getDistancePattern(numValue);
-
-        if (pattern.length) {
-          Vibration.vibrate(pattern);
-        }
-
-        /*
-
-
-        if (numValue < 20) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        } else if (numValue < 200) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } else if (numValue < 300) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-
-        */
-      } catch (err) {
-        console.log('error aca');
-      }
-    }, 1000);
+      );
+    } catch (err) {
+      console.error("Error al configurar monitoreo:", err);
+      setConnected(false);
+    }
   };
 
   return (
     <View>
-      <ThemedText>Conectado: {connected ? 'Sí' : 'No'}</ThemedText>
-      <Button title="Escanear dispositivos" onPress={scanForDevices} />
+      <ThemedText>Estado Bluetooth: {bluetoothState}</ThemedText>
+      <ThemedText>Conectado: {connected ? "Sí" : "No"}</ThemedText>
+      {device && <ThemedText>Dispositivo: {device.localName}</ThemedText>}
+
+      <Button
+        title="Escanear dispositivos"
+        onPress={scanForDevices}
+        disabled={bluetoothState !== "PoweredOn"}
+      />
       <Button title="Conectar" onPress={connectToDevice} disabled={!device} />
 
       {connected && device ? (
-        <ThemedText>Distancia: {distance}</ThemedText>
+        <ThemedText>Distancia: {distance} cm</ThemedText>
       ) : null}
     </View>
   );
