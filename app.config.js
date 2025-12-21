@@ -1,3 +1,5 @@
+const withAndroidXFix = require("./plugins/withAndroidXFix");
+
 export default {
   expo: {
     name: "SmartCane Mobile",
@@ -6,7 +8,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: "smartcane",
-    userInterfaceStyle: "automatic",
+    userInterfaceStyle: "light",
     splash: {
       image: "./assets/images/splash-icon.png",
       resizeMode: "contain",
@@ -24,6 +26,12 @@ export default {
           "This app uses Bluetooth to communicate with your SmartCane device.",
         NSLocationWhenInUseUsageDescription:
           "This app needs access to your location to scan for nearby Bluetooth devices.",
+        NSLocationAlwaysUsageDescription:
+          "This app needs access to your location for navigation features.",
+        NSMicrophoneUsageDescription:
+          "This app needs microphone access for voice commands.",
+        NSSpeechRecognitionUsageDescription:
+          "This app needs speech recognition for voice commands.",
       },
     },
     android: {
@@ -38,6 +46,8 @@ export default {
         "android.permission.BLUETOOTH_SCAN",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE",
       ],
       package: "com.chafamaster.SmartCaneMobile",
     },
@@ -47,6 +57,7 @@ export default {
       favicon: "./assets/images/favicon.png",
     },
     plugins: [
+      withAndroidXFix,
       "expo-router",
       [
         "expo-build-properties",
@@ -59,10 +70,19 @@ export default {
             kotlinVersion: "2.0.21",
             enableProguardInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
+            useAndroidX: true,
+            enableJetifier: true,
           },
           ios: {
             deploymentTarget: "15.1",
           },
+        },
+      ],
+      [
+        "expo-audio",
+        {
+          microphonePermission:
+            "Allow $(PRODUCT_NAME) to access your microphone.",
         },
       ],
       [
@@ -85,6 +105,13 @@ export default {
       ],
       "expo-font",
       "expo-web-browser",
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission:
+            "Allow SmartCane to use your location for navigation.",
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

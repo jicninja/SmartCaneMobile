@@ -1,25 +1,38 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import "react-native-reanimated";
+import { soundService } from "@/services/SoundService";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout(): JSX.Element | null {
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  useEffect(() => {
+    // Initialize sound service after fonts are loaded and app is ready
+    if (loaded) {
+      // Delay initialization to avoid "keep awake" errors
+      const initTimer = setTimeout(() => {
+        void soundService.initialize();
+      }, 1000);
+
+      return () => {
+        clearTimeout(initTimer);
+        // Cleanup on app unmount
+        void soundService.release();
+      };
     }
   }, [loaded]);
 
@@ -28,12 +41,16 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+    <ThemeProvider value={DefaultTheme}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#ffffff" },
+        }}
+      >
+        <Stack.Screen name="index" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="dark" backgroundColor="#ffffff" />
     </ThemeProvider>
   );
 }

@@ -3070,10 +3070,10 @@ expo-asset@~12.0.10:
     "@expo/image-utils" "^0.8.7"
     expo-constants "~18.0.10"
 
-expo-av@~16.0.7:
-  version "16.0.7"
-  resolved "https://registry.yarnpkg.com/expo-av/-/expo-av-16.0.7.tgz#51668b335e3a460ca712a281d7138341119ebe26"
-  integrity sha512-QReef6/RYuZ4GekTcZZw5zY26pcPOmHqK6LMgFlPhnsT0ga97HJrgMc63pvIiojDP+q4oIv24g+QPD8ljZu4XQ==
+expo-audio@~1.0.16:
+  version "1.0.16"
+  resolved "https://registry.yarnpkg.com/expo-audio/-/expo-audio-1.0.16.tgz#6cee98909c5c8b641832e73d944cf0be1c16d4de"
+  integrity sha512-j7otyjtO+8PVbemoCoRBr2Em0Kv9to3bfz5UpI5tDVVb5gD1dkn7sjv6/W6tWNqx14WLR1Wijh/ACecVv1Py+g==
 
 expo-blur@~15.0.7:
   version "15.0.7"
@@ -3126,6 +3126,11 @@ expo-linking@~8.0.9:
     expo-constants "~18.0.10"
     invariant "^2.2.4"
 
+expo-location@~19.0.7:
+  version "19.0.7"
+  resolved "https://registry.yarnpkg.com/expo-location/-/expo-location-19.0.7.tgz#58ab5b9b59db3a26d0495c19e719d5f559948b1c"
+  integrity sha512-YNkh4r9E6ECbPkBCAMG5A5yHDgS0pw+Rzyd0l2ZQlCtjkhlODB55nMCKr5CZnUI0mXTkaSm8CwfoCO8n2MpYfg==
+
 expo-modules-autolinking@3.0.22:
   version "3.0.22"
   resolved "https://registry.yarnpkg.com/expo-modules-autolinking/-/expo-modules-autolinking-3.0.22.tgz#aa8d1aa1059bb14c1de84990553b6ecfce988ea6"
@@ -3177,6 +3182,11 @@ expo-server@^1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/expo-server/-/expo-server-1.0.4.tgz#cb90f23272257f8cb0c9dceaade26bb169d8a3f7"
   integrity sha512-IN06r3oPxFh3plSXdvBL7dx0x6k+0/g0bgxJlNISs6qL5Z+gyPuWS750dpTzOeu37KyBG0RcyO9cXUKzjYgd4A==
+
+expo-speech@~14.0.7:
+  version "14.0.7"
+  resolved "https://registry.yarnpkg.com/expo-speech/-/expo-speech-14.0.7.tgz#be259723819a0a4471511307d27e51a9985c7dc2"
+  integrity sha512-Ff/seq4tfj6AnGZj8Mj83EGnHj636f2mO30bPr3qQJzF9zn3ArakuUQTK8UrkVy0OS0E12z28d+9Fe+AgSUB0w==
 
 expo-splash-screen@~31.0.11:
   version "31.0.11"
